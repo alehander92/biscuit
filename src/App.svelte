@@ -1,14 +1,19 @@
 <script>
-    import {motor} from '../biscuit';
+    import {machine} from '../biscuit';
     export let name;
-    console.log(motor);
+    
+    var buttonText = machine.switch.text();
 
-    var buttonText = motor.textState();
-
-    function toggleMotor() {
-        motor.toggle();
-        buttonText = motor.textState();
+    function toggleSwitch() {
+        machine.switch.toggle();
+        buttonText = machine.switch.text();
+        console.log(buttonText);
     }
+
+    // switch: toggle motor -> on off pause
+    // just run a single conveyor
+
+    // events : on each period 
 
 </script>
 
@@ -17,7 +22,7 @@
     <h1>Hello {name}!</h1>
     <p>Visit the <a href="https://svelte.dev/tutorial">Svelte tutorial</a> to learn how to build Svelte apps.</p>
 
-    <button on:click={toggleMotor}>
+    <button on:click={toggleSwitch}>
       {buttonText}
     </button>
 
