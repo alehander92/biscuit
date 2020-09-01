@@ -23,8 +23,10 @@ class Motor {
     }
 
     on() {
-        this.active = true;
-        this.sendPulses();
+        if (!this.active) {
+            this.active = true;
+            this.sendPulses();
+        }
     }
 
     off() {
@@ -39,6 +41,7 @@ class Motor {
         while (this.active) {
             await asyncSleep(this.pulseTime);
             // console.log('pulse');
+            this.machine.emit(Event.Pulse, {});
             this.machine.conveyor.pulse();
             this.machine.extruder.pulse();
             this.machine.stamper.pulse();
@@ -68,7 +71,7 @@ class Machine {
     loadEvents(event: Event): Event[] {
         var events = [event];
         if (event == Event.All) {
-            events = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            events = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
         }
         return events;
     }
@@ -113,11 +116,12 @@ class Machine {
     off() {
         this.extruder.off();
         this.stamper.offAfterNext();
-        console.log('biscuits : ', this.conveyor.biscuits.length);
+        // console.log('biscuits : ', this.conveyor.biscuits.length);
         this.conveyor.offAfterNoBiscuits(() => { this.oven.off(); this.motor.off(); this.emit(Event.StopMachine, {});});
     }
 
     pause() {
+        this.motor.off();
         this.extruder.off();
         this.stamper.off();
         this.conveyor.off();
@@ -183,7 +187,7 @@ class Conveyor {
                     this.machine.emit(Event.Bake, {temp: this.machine.oven.temp});
                 } else if (biscuit.position >= this.length) {
                     this.biscuitCount += 1;
-                    this.biscuits.pop();
+                    this.biscuits = this.biscuits.slice(1);
                     this.machine.emit(Event.Finish, {});
                 }
             }
@@ -382,8 +386,10 @@ class Switch {
     }
 
     on() {
-        this.active = Active.On;
-        this.machine.on();
+        if (this.active != Active.On) {
+            this.active = Active.On;
+            this.machine.on();
+        }
     }
 
     off() {
@@ -397,7 +403,7 @@ class Switch {
     toggle() {
         // next step
         this.active = (this.active + 1) % 3;
-        console.log(this.active);
+        // console.log(this.active);
     }
 
     text() {
@@ -420,12 +426,13 @@ enum Event {
     StartMachine,
     PauseMachine,
     StopMachine,
+    Pulse,
     Error,
     All
 }
 
 var eventNames = ['Extrude', 'Stamp', 'StartHeat', 'StopHeat', 'Bake', 'Finish', 
-                  'StartMachine', 'PauseMachine', 'StopMachine', 'Error', 'All']
+                  'StartMachine', 'PauseMachine', 'StopMachine', 'Pulse', 'Error', 'All']
 // var motor = new Motor();
 // var machine = new Machine();
 
