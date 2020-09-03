@@ -13,7 +13,9 @@ var box = blessed.box({
 });
 
 
-var machine = new Machine();
+const PULSE_TIME = 1000;
+
+var machine = new Machine(PULSE_TIME);
 
 var index = 0;
 
@@ -26,7 +28,7 @@ const EXTRUDER_COLUMN = 0;
 const STAMPER_COLUMN = 1;
 const OVEN_COLUMN = 4;
 const FINISH_COLUMN = 5;
-const TIMEOUT_SHOW = 500;
+const TIMEOUT_SHOW = 200;
 
 class Text {
     lineCount: number;
@@ -35,7 +37,7 @@ class Text {
     box: any;
     machine: Machine;
 
-    constructor(screen: any, box: any, machine: Machine) {
+    constructor(box: any, screen: any, machine: Machine) {
         this.lines = [
             ['| ', '| ', '  ', '  ', '[]'],
             ['  ', '  ', '  ', '  ', '  '],
@@ -56,7 +58,7 @@ class Text {
 
     update(data: any, event: Event) {
         switch (event) {
-         case Event.Extrude:
+          case Event.Extrude:
             this.showExtrude();
             break;
           case Event.Stamp:
@@ -78,6 +80,8 @@ class Text {
           case Event.PauseMachine:
             break;
           case Event.StopMachine:
+            // clear biscuits
+            this.pulseCalculate();
             break;
           case Event.Error:
             console.log(data.message);
@@ -89,49 +93,57 @@ class Text {
           default:
             // console.log(event);
             break;
-          // this.screen.render();
         }
+        this.renderLines();
     }
 
+
+    renderLines() {
+        for(var i = 0; i < text.lineCount; i += 1) {
+            // console.log(text.lines[0].join(''));
+            this.box.setLine(i, text.lines[i].join(''));
+        }
+        this.screen.render();
+    }
     on() {
         this.lines[SWITCH_LINE] = ['[ off]', '[ pause]', '[*on]'];
-        console.log('render on');
-        // this.renderLines();
+        // console.log('render on');
+        this.renderLines();
     }
 
     pause() {
         this.lines[SWITCH_LINE] = ['[ off]', '[*pause]', '[ on]'];
-        console.log('render pause');
-        this.screen.render();
+        // console.log('render pause');
+        this.renderLines();
     }
 
     off() {
         this.lines[SWITCH_LINE] = ['[*off]', '[ pause]', '[ on]'];
-        console.log('render off');
-        this.screen.render();
+        // console.log('render off');
+        this.renderLines();
     }
 
     showExtrude() {
         this.lines[1][EXTRUDER_COLUMN] = '| ';
         this.lines[BISCUIT_LINE][EXTRUDER_COLUMN] = '  ';
         setTimeout(() => {
-            console.log('after extrude');
+            // console.log('after extrude');
             this.lines[1][EXTRUDER_COLUMN] = '  ';
             this.lines[BISCUIT_LINE][EXTRUDER_COLUMN] = '. ';
-            this.screen.render();
+            this.renderLines();
         }, TIMEOUT_SHOW);
     }
 
 
     showStamp() {
         this.lines[1][STAMPER_COLUMN] = '| ';
-        this.lines[BISCUIT_LINE][STAMPER_COLUMN] = '? ';
+        this.lines[BISCUIT_LINE][STAMPER_COLUMN] = '. ';
         setTimeout(() => {
-            console.log('after stamp');
+            // console.log('after stamp');
             this.lines[1][STAMPER_COLUMN] = '  ';
             this.lines[BISCUIT_LINE][STAMPER_COLUMN] = '_ ';
-            console.log('after ', this.lines);
-            this.screen.render();
+            // console.log('after ', this.lines);
+            this.renderLines();
         }, TIMEOUT_SHOW);
     }
 
@@ -162,15 +174,14 @@ class Text {
         this.lines[3][FINISH_COLUMN] = '     []';
 
         // console.log(this.machine.conveyor.biscuits.map((b) => { return b.position; }));
+        // console.log(this.machine.conveyor.biscuits);
         for (var biscuit of this.machine.conveyor.biscuits) {
+            console.log(biscuit.position, '_')
             this.lines[BISCUIT_LINE][biscuit.position] = '_ ';
         }
     }
 
 }
-
-
-
 
 screen.append(box);
 screen.render();
@@ -193,19 +204,15 @@ screen.key(['backspace'], (ch, key) => { machine.off(); text.off(); });
 screen.key(['escape'], (ch, key) => { process.exit(0); });    
 screen.render();
 
+box.setLine(0, '_');
+screen.render();
+
 machine.handle(Event.All, (data: any, event: Event) => { 
     // console.log(eventNames[event], data);
     // index
     box.setLine(text.lineCount, eventNames[event] + ' ' + JSON.stringify(data));
     text.update(data, event);
-    
-    for(var i = 0; i < text.lineCount; i += 1) {
-        // console.log(text.lines[0].join(''));
-        box.setLine(i, text.lines[i].join(''));
-    }
-        
-    // console.log('render handle');
-    screen.render();
+   
     index += 1;
     // maybeChange(index);
 });
@@ -213,7 +220,7 @@ machine.handle(Event.All, (data: any, event: Event) => {
 async function maybeChange(i: number) {   
     if (i == 20) {
         machine.pause();
-        await asyncSleep(5000);
+        await asyncSleep(5 * PULSE_TIME);
         machine.on();
     } else if (i == 80) {
         // console.log('off');

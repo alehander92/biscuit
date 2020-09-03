@@ -5,8 +5,8 @@ enum Active {
 };
 
 // based on https://stackoverflow.com/a/13448477/438099 and Nim naming
-var asyncSleep = function(time: number) {
-    return new Promise(function(resolve) {
+var asyncSleep = function(time: number): Promise<void> {
+    return new Promise<void>((resolve: () => void) => {
         setTimeout(resolve, time);
     });
 }
@@ -16,10 +16,10 @@ class Motor {
     machine: Machine;
     pulseTime: number;
 
-    constructor(machine: Machine) {
+    constructor(machine: Machine, pulseTime: number) {
         this.active = false;
         this.machine = machine;
-        this.pulseTime = 1000; // TODO
+        this.pulseTime = pulseTime;
     }
 
     on() {
@@ -58,8 +58,8 @@ class Machine {
     switch: Switch;
     handlers: ((data: any, event: Event) => void)[][];
 
-    constructor() {
-        this.motor = new Motor(this);
+    constructor(motorPulseTime: number) {
+        this.motor = new Motor(this, motorPulseTime);
         this.conveyor = new Conveyor(this);
         this.extruder = new Extruder(this);
         this.stamper = new Stamper(this);
@@ -94,12 +94,26 @@ class Machine {
     }
 
     emit(event: Event, data: any) {
+        // console.log('!', event);
         var events = this.loadEvents(event);
         for (var event of events) {
-            for (var handler of this.handlers[event]) {
-                handler(data, event);
+            if (this.handlers[event] !== undefined) {
+                for (var handler of this.handlers[event]) {
+                    handler(data, event);
+                }
             }
         }
+    }
+
+    event(e: Event): Promise<void> {
+        return new Promise<void>((resolve: () => void) => {
+            // console.log('<-', e);
+            this.handle(e, (data: any, _: Event) => { 
+                // console.log('->', e);
+                this.removeHandlers(e);
+                resolve();
+            });
+        });
     }
 
     async on() {
@@ -156,8 +170,8 @@ class Conveyor {
 
     constructor(machine: Machine) {
         this.machine = machine;
-        this.speedPerPulse = 1; // TODO
-        this.length = 5; // TODO
+        this.speedPerPulse = 1; // TODO: maybe config it eventually
+        this.length = 5; // TODO: maybe config it eventually
         this.active = false;
         this.biscuits = [];
         this.ovenPosition = 3;
@@ -232,7 +246,7 @@ class Extruder {
                 this.machine.emit(Event.Error, {message: 'not enough product'})
             }
             else {
-                this.productSize -= 10; // TODO
+                this.productSize -= 10; // TODO is this good enough? do we want it configurable
                 this.machine.conveyor.startBiscuit();
                 this.machine.emit(Event.Extrude, {});
             }
@@ -286,8 +300,9 @@ class Oven {
     warmUpResolve: () => void;
 
     
-    constructor(machine: Machine) {
+    constructor(machine: Machine) {        
         this.machine = machine;
+        // TODO : do we need to configure those? sorry, decided to not do it for now
         this.temp = 20; // TODO
         this.minTemp = 220; // TODO
         this.maxTemp = 240; // TODO
@@ -318,9 +333,9 @@ class Oven {
         // we don't simulate the cooling while it's off
     }
 
-    async waitWarmedUp() {
+    waitWarmedUp(): Promise<void> {
         var self = this;
-        return new Promise(function(resolve) {
+        return new Promise<void>((resolve: () => void) => {
             self.warmUpResolve = resolve;
         });
     }
@@ -433,8 +448,6 @@ enum Event {
 
 var eventNames = ['Extrude', 'Stamp', 'StartHeat', 'StopHeat', 'Bake', 'Finish', 
                   'StartMachine', 'PauseMachine', 'StopMachine', 'Pulse', 'Error', 'All']
-// var motor = new Motor();
-// var machine = new Machine();
 
 export {Machine, Event, eventNames, asyncSleep};
 
