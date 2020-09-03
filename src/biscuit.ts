@@ -1,3 +1,6 @@
+/*
+  The state of the switch
+*/
 enum Active {
     Off,
     Paused,
@@ -11,6 +14,9 @@ var asyncSleep = function(time: number): Promise<void> {
     });
 }
 
+/*
+  The motor : it has a certain pulse time which we pass from the machine
+*/
 class Motor {
     active: boolean;
     machine: Machine;
@@ -49,6 +55,11 @@ class Motor {
     }
 }
 
+/* 
+  Machine contains the other elements and some handlers
+  which let one listen to events or wait asynchronously for them
+  using the `handle` and `event` methods.
+*/
 class Machine {
     motor: Motor;
     conveyor: Conveyor;
@@ -130,7 +141,6 @@ class Machine {
     off() {
         this.extruder.off();
         this.stamper.offAfterNext();
-        // console.log('biscuits : ', this.conveyor.biscuits.length);
         this.conveyor.offAfterNoBiscuits(() => { this.oven.off(); this.motor.off(); this.emit(Event.StopMachine, {});});
     }
 
@@ -157,6 +167,11 @@ class Biscuit {
     }
 }
 
+/* 
+  Conveyor contains a lot of the
+  actual biscuit moving logic: overally we just simulate stuff in
+  discrete moments, so it's not really a very realistic physical simulation
+*/
 class Conveyor {
     machine: Machine;
     speedPerPulse: number;
@@ -166,7 +181,7 @@ class Conveyor {
     ovenPosition: number;
     biscuitCount: number;
     stopAfterNoBiscuits: boolean;
-    offCallback: () => void;
+    offCallback?: () => void;
 
     constructor(machine: Machine) {
         this.machine = machine;
@@ -177,7 +192,7 @@ class Conveyor {
         this.ovenPosition = 3;
         this.biscuitCount = 0;
         this.stopAfterNoBiscuits = false;
-        this.offCallback = null;
+        this.offCallback = undefined;
     }
 
     on() {
@@ -297,7 +312,7 @@ class Oven {
     heatingElement: HeatingElement;
     active: boolean;
     sleepTime: number;
-    warmUpResolve: () => void;
+    warmUpResolve?: () => void;
 
     
     constructor(machine: Machine) {        
@@ -309,7 +324,7 @@ class Oven {
         this.heatingElement = new HeatingElement(machine, this);
         this.active = false;
         this.sleepTime = 100; // TODO
-        this.warmUpResolve = null;
+        this.warmUpResolve = undefined;
     }
 
     async on() {
@@ -431,6 +446,10 @@ class Switch {
 }
 
 
+/* 
+  The events that one can wait for or listen for
+  Event.All should map to all the others
+*/
 enum Event {
     Extrude,
     Stamp,
@@ -450,5 +469,3 @@ var eventNames = ['Extrude', 'Stamp', 'StartHeat', 'StopHeat', 'Bake', 'Finish',
                   'StartMachine', 'PauseMachine', 'StopMachine', 'Pulse', 'Error', 'All']
 
 export {Machine, Event, eventNames, asyncSleep};
-
-

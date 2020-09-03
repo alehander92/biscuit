@@ -1,26 +1,19 @@
 {
-  "name": "svelte-app",
-  "version": "1.0.0",
+  "name": "biscuit",
+  "version": "0.1.0",
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "start": "sirv public"
+    "build": "npx tsc --module commonjs src/biscuit.ts; npx tsc cli.ts",
+    "test": "npx tsc spec/test.ts; npx jasmine spec/test.js"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^14.0.0",
-    "@rollup/plugin-node-resolve": "^8.0.0",
     "jasmine": "^3.6.1",
-    "rollup": "^2.3.4",
-    "rollup-plugin-livereload": "^1.0.0",
-    "rollup-plugin-svelte": "^6.0.0",
-    "rollup-plugin-terser": "^7.0.0",
-    "svelte": "^3.0.0"
+    "typescript": "^4.0.2",
+    "@types/jasmine": "^3.5.14",
+    "@types/node": "^14.6.3",
+    "prettier": "^2.1.1"
   },
   "dependencies": {
-    "@types/jasmine": "^3.5.14",
-    "ava": "^3.12.1",
     "blessed": "^0.1.81",
     "sirv-cli": "^1.0.0"
-  },
-  "scripts": { "test": "npx jasmine spec/test.js" }
+  }
 }

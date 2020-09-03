@@ -1,8 +1,10 @@
-import {Machine, Event, eventNames, asyncSleep} from './biscuit';
+import {Machine, Event, eventNames, asyncSleep} from './src/biscuit';
 
 var blessed = require('blessed');
 
 var screen = blessed.screen();
+
+// a simple box for now
 
 var box = blessed.box({
     top: 'center',
@@ -12,8 +14,14 @@ var box = blessed.box({
     content: ''
 });
 
+screen.append(box);
+screen.render();
+
+// the time for each pulse
 
 const PULSE_TIME = 1000;
+
+// the machine we'll be using
 
 var machine = new Machine(PULSE_TIME);
 
@@ -30,6 +38,13 @@ const OVEN_COLUMN = 4;
 const FINISH_COLUMN = 5;
 const TIMEOUT_SHOW = 200;
 
+/*
+  The text interface: maintains
+  state and fields with TUI / machine related values
+  
+  it updates on events and re-renders several text lines
+  containing a simple representation of some of the machine state
+*/
 class Text {
     lineCount: number;
     lines: string[][];
@@ -54,6 +69,7 @@ class Text {
         this.box = box;
 
         this.machine = machine;
+        console.log(this.lineCount);
     }
 
     update(data: any, event: Event) {
@@ -99,27 +115,23 @@ class Text {
 
 
     renderLines() {
-        for(var i = 0; i < text.lineCount; i += 1) {
-            // console.log(text.lines[0].join(''));
-            this.box.setLine(i, text.lines[i].join(''));
+        for(var i = 0; i < this.lineCount; i += 1) {
+            this.box.setLine(i, this.lines[i].join(''));
         }
         this.screen.render();
     }
     on() {
         this.lines[SWITCH_LINE] = ['[ off]', '[ pause]', '[*on]'];
-        // console.log('render on');
         this.renderLines();
     }
 
     pause() {
         this.lines[SWITCH_LINE] = ['[ off]', '[*pause]', '[ on]'];
-        // console.log('render pause');
         this.renderLines();
     }
 
     off() {
         this.lines[SWITCH_LINE] = ['[*off]', '[ pause]', '[ on]'];
-        // console.log('render off');
         this.renderLines();
     }
 
@@ -127,7 +139,6 @@ class Text {
         this.lines[1][EXTRUDER_COLUMN] = '| ';
         this.lines[BISCUIT_LINE][EXTRUDER_COLUMN] = '  ';
         setTimeout(() => {
-            // console.log('after extrude');
             this.lines[1][EXTRUDER_COLUMN] = '  ';
             this.lines[BISCUIT_LINE][EXTRUDER_COLUMN] = '. ';
             this.renderLines();
@@ -139,21 +150,17 @@ class Text {
         this.lines[1][STAMPER_COLUMN] = '| ';
         this.lines[BISCUIT_LINE][STAMPER_COLUMN] = '. ';
         setTimeout(() => {
-            // console.log('after stamp');
             this.lines[1][STAMPER_COLUMN] = '  ';
             this.lines[BISCUIT_LINE][STAMPER_COLUMN] = '_ ';
-            // console.log('after ', this.lines);
             this.renderLines();
         }, TIMEOUT_SHOW);
     }
 
     showHeating() {
-        // console.log(1, OVEN_COLUMN);
         this.lines[1][OVEN_COLUMN] = '. ';
     }
 
     showNotHeating() {
-        // console.log('not');
         this.lines[1][OVEN_COLUMN] = '  ';
     }
 
@@ -173,18 +180,13 @@ class Text {
         this.lines[BISCUIT_LINE][STAMPER_COLUMN] = '  ';
         this.lines[3][FINISH_COLUMN] = '     []';
 
-        // console.log(this.machine.conveyor.biscuits.map((b) => { return b.position; }));
-        // console.log(this.machine.conveyor.biscuits);
         for (var biscuit of this.machine.conveyor.biscuits) {
-            console.log(biscuit.position, '_')
             this.lines[BISCUIT_LINE][biscuit.position] = '_ ';
         }
     }
 
 }
 
-screen.append(box);
-screen.render();
 
 function initText(screen: any, box: any, machine: Machine) {
     var text = new Text(box, screen, machine);
@@ -193,6 +195,8 @@ function initText(screen: any, box: any, machine: Machine) {
         box.insertLine(i, '');
     }
     screen.render();
+
+    text.renderLines();
     return text;
 }
 
@@ -204,12 +208,9 @@ screen.key(['backspace'], (ch, key) => { machine.off(); text.off(); });
 screen.key(['escape'], (ch, key) => { process.exit(0); });    
 screen.render();
 
-box.setLine(0, '_');
 screen.render();
 
 machine.handle(Event.All, (data: any, event: Event) => { 
-    // console.log(eventNames[event], data);
-    // index
     box.setLine(text.lineCount, eventNames[event] + ' ' + JSON.stringify(data));
     text.update(data, event);
    
@@ -227,8 +228,6 @@ async function maybeChange(i: number) {
         machine.off();
     }
 }
-
-// machine.on();
 
 
 
